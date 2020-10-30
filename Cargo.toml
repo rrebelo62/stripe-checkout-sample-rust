@@ -1,5 +1,5 @@
 [package]
-name = "stripe-rust"
+name = "stripe-sample-rust"
 version = "0.1.0"
 authors = ["Rui Rebelo <rrebelo@gadgetish.com>"]
 edition = "2018"
@@ -8,6 +8,14 @@ edition = "2018"
 
 [dependencies]
 actix-web = "3"
-actix-files ="0.4"
-dotenv="0.*"
+actix-files ="*"
+dotenv="*"
 serde="1.*"
+serde_json="1.*"
+lazy_static = "1.*"
+futures="*"
+reqwest = { version = "*", features = ["json"] }
+stripe-rust = { version = "0.*", default-features = false, features = ["default-tls", "billing", "checkout"] }
+
+[dev-dependencies]
+tokio-test = "*"
