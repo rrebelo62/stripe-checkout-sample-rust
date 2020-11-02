@@ -8,7 +8,6 @@ async fn main() -> std::io::Result<()> {
 	use actix_files as fs;
 
 	dotenv().ok();
-	controllers::ask_password();
 	/*let keys= ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET",
 		"DOMAIN", "BASIC_PRICE_ID", "PRO_PRICE_ID", "STATIC_DIR"];
 	for key in &keys {
@@ -21,7 +20,10 @@ async fn main() -> std::io::Result<()> {
 		App::new()
 		.route("/create-checkout-session", web::post().to(controllers::create_checkout_session))
 		.route("/setup", web::get().to(controllers::setup))
-			.service(fs::Files::new("/", client_folder).index_file("index.html"))
+		.route("/customer-portal", web::post().to( controllers::customer_portal))
+		.route("/webhook", web::post().to( controllers::webhook))
+		.route("/checkout-session", web::get().to( controllers::checkout_session))
+		.service(fs::Files::new("/", client_folder).index_file("index.html"))
 	})
 	.bind("127.0.0.1:4242")?
 	.run()
