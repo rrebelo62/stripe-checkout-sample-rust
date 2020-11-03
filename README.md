@@ -20,3 +20,5 @@ stripe prices create --product=prod_XYZ --unit-amount=1200 --currency=usd -d"rec
 4. Edit change the file `.env.example` name into `.env` and change the test keys, prices' ids and webhook id.
 
 5. Call `cargo run` and access `http://localhost:4242` with a web browser. Because the sample doesn't run on SSL, I recomend using MS Edge. For security reasons, the settings on other browsers will block some components.
+
+6. For the customer to be able to access the customer portal and manage billing you'll need to enable it in the Stripe dashboard.

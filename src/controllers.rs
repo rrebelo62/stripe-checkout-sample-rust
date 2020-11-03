@@ -7,7 +7,6 @@ use dotenv;
 use crate::model;
 use lazy_static::lazy_static;
 use std::sync::RwLock;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 lazy_static! {
     static ref STRIPE_SECRET_KEY: String = {
@@ -39,10 +38,16 @@ pub async fn checkout_session( req:HttpRequest ) -> Result<HttpResponse>{
 		let session_id_vec:Vec<&str> = query.split("sessionId=").collect();
 		if session_id_vec.len() == 2 {
 			let session_id= session_id_vec[1];
-			let sessions_map = SESSIONS_MAP.read().unwrap();
-			if sessions_map.contains_key( session_id ) {
-				return Ok( HttpResponse::Ok().json(sessions_map.get( session_id )));
-			}
+			let retrieve_session_url = format!("https://api.stripe.com/v1/checkout/sessions/{0}", session_id);
+			let result = get(retrieve_session_url).await;
+			match result{
+				Ok(json) => {
+					println!("Session json: {}", json);
+					let session : model::CheckoutSession = serde_json::from_str(&json).unwrap();
+					return Ok( HttpResponse::Ok().json( session ));
+				},
+				_ => return Err(ErrorInternalServerError("Can't find such session."))
+			};
 		}
 	}
 	return Err( ErrorInternalServerError("Can't find such session"));
@@ -101,16 +106,20 @@ async fn post_form( url : String, parms:HashMap<&str, &str> )->Result<String, re
 	}
 }
 
-// generate a string with timestamp in nanoseconds to use it as a fake customer id,
-// to allow access to the customer portal
-fn timestamp_as_string() -> String{
-	let start = SystemTime::now();
-    let since_the_epoch = start
-		.duration_since(UNIX_EPOCH)
-		.expect("Time went backwards");
-	let millis = since_the_epoch.as_nanos();
-	format!("{:?}", millis)
+async fn get( url : String)->Result<String, reqwest::Error>
+{
+	let stripe_secret_key = STRIPE_SECRET_KEY.clone();
+	// using reqwest here because it seems actix_web::Client doesn't implement authentication
+	let client = reqwest::Client::new();
+	let result = client.get(&url)
+		.basic_auth(stripe_secret_key, Option::<String>::None)
+		.send().await;
+	match result {
+		Ok(resp)=> Ok(resp.text().await?),
+		Err(err)=> Err(err)
+	}
 }
+
 pub async fn create_checkout_session(parm: web::Json<CreateCheckoutSessionParm> ) ->Result<HttpResponse>{
 	// from https://stripe.com/docs/api/checkout/sessions/create
 	let mut session_parms :HashMap<&str, &str> = HashMap::new();
@@ -120,8 +129,6 @@ pub async fn create_checkout_session(parm: web::Json<CreateCheckoutSessionParm> 
 	session_parms.insert("mode", "subscription");
 	session_parms.insert("line_items[0][price]", &parm.priceId );
 	session_parms.insert("line_items[0][quantity]", "1");
-	//let fake_customer_id = timestamp_as_string();
-	//session_parms.insert("customer", &fake_customer_id);
 	let result = post_form("https://api.stripe.com/v1/checkout/sessions".to_string(), session_parms).await;
 	match result{
 		Ok(json) => {
@@ -159,7 +166,22 @@ mod tests{
 
 			// retrieves created session
 			let checkout_session_response : model::CreateCheckoutSessionResponse = test::read_body_json(resp).await;
-			let path = format!( "/checkout_session?sessionId={}", checkout_session_response.session_id);
+			let path = format!( "/checkout-session?sessionId={}", checkout_session_response.session_id);
+			let test_req = TestRequest::get()
+				.uri(&path);
+			let resp = test_req.send_request(&mut app).await;
+			assert!(resp.status().is_success());
+		}
+
+		#[actix_rt::test]
+		pub async fn checkout_session_success(){
+			fn init_routes(cfg: &mut web::ServiceConfig) {
+				cfg.route("/checkout-session", web::get().to(checkout_session));
+			};
+
+			let mut app = test::init_service(App::new().configure(init_routes)).await;
+			// retrieves created session
+			let path = "/checkout-session?sessionId=cs_test_TYPE SOME_VALID_CODE_HERE" ;
 			let test_req = TestRequest::get()
 				.uri(&path);
 			let resp = test_req.send_request(&mut app).await;
