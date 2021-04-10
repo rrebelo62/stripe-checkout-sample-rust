@@ -5,8 +5,8 @@ An implementation, in Rust, of the [Stripe Checkout Simple Subscription sample](
 ## How to install
 
 1. Login to stripe (with your key and password) and get a pairing code: `stripe login`
-2. Create a basic and a premium product, either using the CLI or the dashboard
-  Using the CLI:
+2. Create a basic and a premium product, either using the CLI or the dashboard.
+  If using the CLI:
 ```
 stripe products create --name="Basic" --description="Basic plan"
 stripe products create --name="Premium" --description="Premium plan"
