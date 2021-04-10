@@ -1,4 +1,4 @@
-client/* linguist-vendored
-*.css linguist-vendored
-*.js linguist-vendored
-*.html linguist-vendored
+client/* linguist-generated
+*.css linguist-generated
+*.js linguist-generated
+*.html linguist-generated
